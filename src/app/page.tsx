@@ -1,77 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-type TabType = "directory" | "enrollment" | "subjects";
-
-interface TabConfig {
-  id: TabType;
-  label: string;
-}
-
-const tabs: TabConfig[] = [
-  { id: "directory", label: "专业目录" },
-  { id: "enrollment", label: "招生计划" },
-  { id: "subjects", label: "考试科目" },
-];
+import { useState } from "react";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabType>("directory");
   const [keyword, setKeyword] = useState("");
-  const [filter, setFilter] = useState("");
-  const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState<{
-    招考类别列表: string[];
-    院校名称列表: string[];
-  }>({ 招考类别列表: [], 院校名称列表: [] });
-
-  // 加载选项数据
-  useEffect(() => {
-    fetchOptions();
-  }, []);
-
-  const fetchOptions = async () => {
-    try {
-      const res = await fetch("/api/options");
-      const result = await res.json();
-      if (result.success) {
-        setOptions(result.data);
-      }
-    } catch (error) {
-      console.error("加载选项失败:", error);
-    }
-  };
+  const [results, setResults] = useState<any[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async () => {
+    if (!keyword.trim()) {
+      alert("请输入专业名称");
+      return;
+    }
+
     setLoading(true);
+    setHasSearched(true);
+
     try {
-      let url = `/api/${activeTab}?`;
-      const params: string[] = [];
-
-      if (keyword) {
-        params.push(`keyword=${encodeURIComponent(keyword)}`);
-      }
-
-      if (activeTab === "directory" && filter) {
-        params.push(`招考类别=${encodeURIComponent(filter)}`);
-      }
-
-      if (activeTab === "enrollment" && filter) {
-        params.push(`院校名称=${encodeURIComponent(filter)}`);
-      }
-
-      if (activeTab === "subjects" && filter) {
-        params.push(`招考类别=${encodeURIComponent(filter)}`);
-      }
-
-      url += params.join("&");
-
-      const res = await fetch(url);
+      const res = await fetch(
+        `/api/comprehensive-search?keyword=${encodeURIComponent(keyword)}`
+      );
       const result = await res.json();
 
       if (result.success) {
-        setData(result.data);
+        setResults(result.data);
       } else {
         alert("查询失败: " + result.error);
       }
@@ -83,264 +36,204 @@ export default function Home() {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
   const resetSearch = () => {
     setKeyword("");
-    setFilter("");
-    setData([]);
-  };
-
-  const renderFilter = () => {
-    if (activeTab === "directory") {
-      return (
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">全部招考类别</option>
-          {options.招考类别列表.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    if (activeTab === "enrollment") {
-      return (
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">全部院校</option>
-          {options.院校名称列表.map((school) => (
-            <option key={school} value={school}>
-              {school}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    if (activeTab === "subjects") {
-      return (
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">全部招考类别</option>
-          {options.招考类别列表.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    return null;
-  };
-
-  const renderTable = () => {
-    if (data.length === 0) {
-      return (
-        <div className="flex min-h-[200px] items-center justify-center text-gray-500">
-          暂无数据
-        </div>
-      );
-    }
-
-    if (activeTab === "directory") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium">专科专业</th>
-                <th className="px-4 py-3 text-left font-medium">本科专业类</th>
-                <th className="px-4 py-3 text-left font-medium">本科专业</th>
-                <th className="px-4 py-3 text-left font-medium">招考类别</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">{item.专科专业}</td>
-                  <td className="px-4 py-3">{item.本科专业类}</td>
-                  <td className="px-4 py-3">{item.本科专业}</td>
-                  <td className="px-4 py-3">{item.招考类别}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    if (activeTab === "enrollment") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium">院校名称</th>
-                <th className="px-4 py-3 text-left font-medium">专业名称</th>
-                <th className="px-4 py-3 text-right font-medium">普通计划数</th>
-                <th className="px-4 py-3 text-right font-medium">专项计划数</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">{item.院校名称}</td>
-                  <td className="px-4 py-3">{item.专业名称}</td>
-                  <td className="px-4 py-3 text-right">{item.普通计划数}</td>
-                  <td className="px-4 py-3 text-right">{item.专项计划数}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    if (activeTab === "subjects") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium">招考类别</th>
-                <th className="px-4 py-3 text-left font-medium">本科招生专业类</th>
-                <th className="px-4 py-3 text-left font-medium">公共基础</th>
-                <th className="px-4 py-3 text-left font-medium">专业基础</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">{item.招考类别}</td>
-                  <td className="px-4 py-3">{item.本科招生专业类}</td>
-                  <td className="px-4 py-3 whitespace-pre-wrap">{item.公共基础}</td>
-                  <td className="px-4 py-3">{item.专业基础}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
+    setResults([]);
+    setHasSearched(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* 头部 */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-4xl px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+      <header className="bg-white shadow-md">
+        <div className="mx-auto max-w-5xl px-4 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">
             内蒙古专升本查询系统
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            2025年普通高等教育专升本考试招生计划查询
+          <p className="mt-2 text-gray-600">
+            输入专科专业或本科专业，查询可报考院校及考试科目
           </p>
         </div>
       </header>
 
       {/* 主内容 */}
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        {/* 标签页 */}
-        <div className="mb-6 flex space-x-1 rounded-lg bg-white p-1 shadow-sm">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                resetSearch();
-              }}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
+      <main className="mx-auto max-w-5xl px-4 py-8">
         {/* 搜索区域 */}
-        <div className="mb-6 space-y-4 rounded-lg bg-white p-6 shadow-sm">
+        <div className="mb-8 rounded-xl bg-white p-6 shadow-lg">
           <div className="space-y-4">
-            {/* 关键词搜索 */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
-                关键词搜索
+                专业名称
               </label>
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                placeholder={
-                  activeTab === "directory"
-                    ? "输入专科专业或本科专业名称"
-                    : activeTab === "enrollment"
-                    ? "输入院校名称或专业名称"
-                    : "输入招考类别"
-                }
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            {/* 筛选条件 */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                筛选条件
-              </label>
-              {renderFilter()}
-            </div>
-
-            {/* 操作按钮 */}
-            <div className="flex space-x-3">
-              <button
-                onClick={handleSearch}
-                disabled={loading}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {loading ? "查询中..." : "查询"}
-              </button>
-              <button
-                onClick={resetSearch}
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                重置
-              </button>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="输入专科专业或本科专业，例如：园林、机械设计"
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+                <button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="rounded-lg bg-blue-600 px-8 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {loading ? "查询中..." : "查询"}
+                </button>
+                {hasSearched && (
+                  <button
+                    onClick={resetSearch}
+                    className="rounded-lg border border-gray-300 px-6 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    重置
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* 结果展示 */}
-        <div className="rounded-lg bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-medium text-gray-900">
-              查询结果
-              {data.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  （共 {data.length} 条）
-                </span>
-              )}
-            </h2>
+        {hasSearched && (
+          <div className="space-y-6">
+            {results.length === 0 ? (
+              <div className="rounded-xl bg-white p-8 text-center shadow-lg">
+                <div className="text-5xl mb-4">🔍</div>
+                <p className="text-xl font-medium text-gray-700">
+                  未找到匹配的专业
+                </p>
+                <p className="mt-2 text-gray-500">
+                  请尝试输入完整的专业名称或使用其他关键词
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {results.map((item, index) => (
+                  <div
+                    key={index}
+                    className="rounded-xl bg-white p-6 shadow-lg transition-shadow hover:shadow-xl"
+                  >
+                    {/* 专科专业和本科专业 */}
+                    <div className="mb-6 rounded-lg bg-blue-50 p-4">
+                      <div className="mb-2">
+                        <span className="text-sm font-medium text-gray-600">
+                          专科专业：
+                        </span>
+                        <span className="ml-2 text-lg font-semibold text-gray-900">
+                          {item.专科专业}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-600">
+                          可报考本科专业：
+                        </span>
+                        <span className="ml-2 text-xl font-bold text-blue-700">
+                          {item.本科专业}
+                        </span>
+                        <span className="ml-3 text-sm text-gray-500">
+                          （{item.本科专业类}）
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                          {item.招考类别}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 考试科目 */}
+                    {item.考试科目 && (
+                      <div className="mb-6 rounded-lg bg-green-50 p-4">
+                        <h3 className="mb-3 font-semibold text-green-900">
+                          📚 考试科目
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-700">
+                              公共基础：
+                            </span>
+                            <span className="ml-2 text-gray-900 whitespace-pre-line">
+                              {item.考试科目.公共基础}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">
+                              专业基础：
+                            </span>
+                            <span className="ml-2 text-gray-900">
+                              {item.考试科目.专业基础}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 可报考院校 */}
+                    <div className="rounded-lg bg-orange-50 p-4">
+                      <h3 className="mb-3 font-semibold text-orange-900">
+                        🏫 可报考院校 ({item.可报考院校.length}所)
+                      </h3>
+                      {item.可报考院校.length === 0 ? (
+                        <p className="text-sm text-gray-500">暂无招生计划</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-orange-200">
+                                <th className="px-3 py-2 text-left font-medium text-orange-900">
+                                  院校名称
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-orange-900">
+                                  专业名称
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium text-orange-900">
+                                  普通计划
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium text-orange-900">
+                                  专项计划
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.可报考院校.map((school: any, sIndex: number) => (
+                                <tr key={sIndex} className="border-b border-orange-100 last:border-0">
+                                  <td className="px-3 py-2 font-medium text-gray-900">
+                                    {school.院校名称}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-700">
+                                    {school.专业名称}
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-900">
+                                    {school.普通计划数}人
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-900">
+                                    {school.专项计划数}人
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="px-6 py-4">{renderTable()}</div>
-        </div>
+        )}
       </main>
 
       {/* 底部 */}
-      <footer className="mt-12 border-t border-gray-200 bg-white py-6">
-        <div className="mx-auto max-w-4xl px-4 text-center text-sm text-gray-500">
+      <footer className="mt-16 border-t border-gray-200 bg-white py-6">
+        <div className="mx-auto max-w-5xl px-4 text-center text-sm text-gray-500">
           <p>数据来源：内蒙古自治区教育招生考试中心</p>
           <p className="mt-2">© 2025 内蒙古专升本查询系统</p>
         </div>
