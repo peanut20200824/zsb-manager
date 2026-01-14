@@ -51,9 +51,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 获取所有本科专业名称
-    const undergraduateMajors = directoryRecords.map((r) => r.本科专业);
-
     // 2. 如果指定了学校，查询该学校的专业列表
     if (schoolName) {
       const results = [];
@@ -71,19 +68,11 @@ export async function GET(request: NextRequest) {
           );
 
         if (enrollmentRecords.length > 0) {
-          // 查询考试科目
-          const mappedCategory = categoryMapping[record.招考类别];
-          const examRecords = await db
-            .select()
-            .from(examSubjects)
-            .where(eq(examSubjects.招考类别, mappedCategory || ""));
-
           results.push({
             专科专业: record.专科专业,
             本科专业: record.本科专业,
             本科专业类: record.本科专业类,
             招考类别: record.招考类别,
-            考试科目: examRecords.length > 0 ? examRecords[0] : null,
             招生计划: enrollmentRecords.map((e) => ({
               专业名称: e.专业名称,
               普通计划数: e.普通计划数,
@@ -103,7 +92,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 3. 如果没有指定学校，返回学校列表（去重）
+    // 3. 如果没有指定学校，返回学校列表（去重）和考试科目
+    // 获取所有本科专业名称
+    const undergraduateMajors = directoryRecords.map((r) => r.本科专业);
+
     const schoolSet = new Map<string, { 专业数量: number; 招考类别: Set<string> }>();
 
     for (const major of undergraduateMajors) {
@@ -123,10 +115,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 查询所有本科专业对应的招考类别
+    // 收集所有招考类别（去重）
     const categorySet = new Set<string>();
     for (const record of directoryRecords) {
       categorySet.add(record.招考类别);
+    }
+
+    // 查询考试科目
+    const examSubjectsList = [];
+    for (const category of Array.from(categorySet)) {
+      const mappedCategory = categoryMapping[category];
+      if (mappedCategory) {
+        const examRecords = await db
+          .select()
+          .from(examSubjects)
+          .where(eq(examSubjects.招考类别, mappedCategory));
+
+        if (examRecords.length > 0) {
+          examSubjectsList.push({
+            招考类别: category,
+            考试科目: examRecords[0],
+          });
+        }
+      }
     }
 
     const schoolList = Array.from(schoolSet.entries())
@@ -141,6 +152,7 @@ export async function GET(request: NextRequest) {
       data: {
         level: "school",
         专科专业: directoryRecords[0].专科专业,
+        考试科目列表: examSubjectsList,
         学校列表: schoolList,
       },
     });

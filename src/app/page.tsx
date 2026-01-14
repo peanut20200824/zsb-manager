@@ -12,10 +12,6 @@ type MajorItem = {
   本科专业: string;
   本科专业类: string;
   招考类别: string;
-  考试科目: {
-    公共基础: string;
-    专业基础: string;
-  } | null;
   招生计划: Array<{
     专业名称: string;
     普通计划数: number;
@@ -184,6 +180,44 @@ export default function Home() {
                   <div className="h-2 flex-1 rounded-full bg-gradient-to-r from-blue-600 to-blue-500"></div>
                 </div>
 
+                {/* 考试科目 */}
+                {resultData.考试科目列表 && resultData.考试科目列表.length > 0 && (
+                  <div className="mb-6 rounded-xl bg-green-50 p-6 shadow-lg">
+                    <h3 className="mb-4 text-lg font-semibold text-green-900">
+                      📚 考试科目
+                    </h3>
+                    <div className="space-y-4">
+                      {resultData.考试科目列表.map((exam: any, index: number) => (
+                        <div key={index} className="rounded-lg bg-white p-4">
+                          <div className="mb-2 flex items-center">
+                            <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                              {exam.招考类别}
+                            </span>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div>
+                              <span className="font-medium text-gray-700">
+                                公共基础：
+                              </span>
+                              <span className="ml-2 text-gray-900 whitespace-pre-line">
+                                {exam.考试科目.公共基础}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">
+                                专业基础：
+                              </span>
+                              <span className="ml-2 text-gray-900">
+                                {exam.考试科目.专业基础}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-4 text-center text-gray-600">
                   找到 {resultData.学校列表.length} 所可报考院校
                 </div>
@@ -254,33 +288,6 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-
-                      {/* 考试科目 */}
-                      {item.考试科目 && (
-                        <div className="mb-4 rounded-lg bg-green-50 p-4">
-                          <h4 className="mb-3 font-semibold text-green-900">
-                            📚 考试科目
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="font-medium text-gray-700">
-                                公共基础：
-                              </span>
-                              <span className="ml-2 text-gray-900 whitespace-pre-line">
-                                {item.考试科目.公共基础}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-700">
-                                专业基础：
-                              </span>
-                              <span className="ml-2 text-gray-900">
-                                {item.考试科目.专业基础}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
                       {/* 招生计划 */}
                       {item.招生计划.length > 0 && (
