@@ -57,11 +57,11 @@ pnpm start
 
 ## 部署到云平台
 
-### 1. Vercel 部署（推荐）
+### 1. Vercel 部署（推荐）⭐
 
 Vercel 是 Next.js 的官方托管平台，部署最简单。
 
-#### 步骤：
+#### 快速开始
 
 1. **安装 Vercel CLI**
    ```bash
@@ -80,6 +80,14 @@ Vercel 是 Next.js 的官方托管平台，部署最简单。
 
 4. **获取访问地址**：
    部署完成后，Vercel 会提供一个类似 `https://your-app.vercel.app` 的访问地址
+
+#### 📖 详细部署指南
+
+查看 [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) 获取：
+- 完整的部署步骤
+- 常见问题解决
+- 自定义域名配置
+- 更新部署方法
 
 ### 2. 部署到其他平台
 
