@@ -112,7 +112,7 @@ export default function Home() {
       <header className="bg-white shadow-md">
         <div className="mx-auto max-w-5xl px-4 py-6">
           <h1 className="text-3xl font-bold text-gray-900">
-            内蒙古专升本查询系统
+            内蒙古青于蓝专升本
           </h1>
           <p className="mt-2 text-gray-600">
             输入专科专业，查询可报考本科专业及院校
