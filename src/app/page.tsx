@@ -174,22 +174,17 @@ export default function Home() {
             {resultData.level === "major" && resultData.考试科目列表 && resultData.考试科目列表.length > 0 && (
               <div className="mb-6 rounded-xl bg-green-50 p-6 shadow-lg">
                 <h3 className="mb-4 text-lg font-semibold text-green-900">
-                  📚 考试科目
+                  📚 考试内容
                 </h3>
                 <div className="space-y-4">
                   {resultData.考试科目列表.map((exam: any, index: number) => (
                     <div key={index} className="rounded-lg bg-white p-4">
-                      <div className="mb-2 flex items-center">
-                        <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-                          {exam.招考类别}
-                        </span>
-                      </div>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-3 text-sm">
                         <div>
                           <span className="font-medium text-gray-700">
                             公共基础：
                           </span>
-                          <span className="ml-2 text-gray-600">
+                          <span className="ml-2 text-gray-600 whitespace-pre-line">
                             {exam.考试科目?.公共基础}
                           </span>
                         </div>
@@ -198,6 +193,7 @@ export default function Home() {
                             专业综合：
                           </span>
                           <span className="ml-2 text-gray-600">
+                            （{exam.招考类别}）
                             {exam.考试科目?.专业综合}
                           </span>
                         </div>
