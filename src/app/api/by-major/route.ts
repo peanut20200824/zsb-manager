@@ -18,15 +18,15 @@ const categoryMapping: Record<string, string> = {
 };
 
 /**
- * 第一级查询：根据专科专业查询可报考的学校列表
+ * 第一级查询：根据专科专业查询可报考的本科专业列表
  * 参数：keyword（专科专业名称）
- * 返回：学校列表（去重）
+ * 返回：本科专业列表 + 考试科目
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const keyword = searchParams.get("keyword");
-    const schoolName = searchParams.get("school"); // 可选，如果指定则查询该学校的专业
+    const undergraduateMajor = searchParams.get("undergraduateMajor"); // 可选，如果指定则查询该本科专业的学校
 
     if (!keyword) {
       return NextResponse.json({
@@ -51,73 +51,80 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 2. 如果指定了学校，查询该学校的专业列表
-    if (schoolName) {
+    // 2. 如果指定了本科专业，查询该本科专业的学校列表
+    if (undergraduateMajor) {
       const results = [];
 
-      for (const record of directoryRecords) {
-        // 查询该学校是否有这个本科专业
-        const enrollmentRecords = await db
-          .select()
-          .from(enrollmentPlan)
-          .where(
-            and(
-              eq(enrollmentPlan.院校名称, schoolName),
-              like(enrollmentPlan.专业名称, `%${record.本科专业}%`)
-            )
-          );
+      // 查询招生计划中匹配的学校
+      const enrollmentRecords = await db
+        .select()
+        .from(enrollmentPlan)
+        .where(like(enrollmentPlan.专业名称, `%${undergraduateMajor}%`));
 
-        if (enrollmentRecords.length > 0) {
-          results.push({
-            专科专业: record.专科专业,
-            本科专业: record.本科专业,
-            本科专业类: record.本科专业类,
-            招考类别: record.招考类别,
-            招生计划: enrollmentRecords.map((e) => ({
-              专业名称: e.专业名称,
-              普通计划数: e.普通计划数,
-              专项计划数: e.专项计划数,
-            })),
-          });
+      // 按学校分组
+      const schoolGroupMap = new Map<string, any[]>();
+
+      for (const record of enrollmentRecords) {
+        if (!schoolGroupMap.has(record.院校名称)) {
+          schoolGroupMap.set(record.院校名称, []);
         }
+        schoolGroupMap.get(record.院校名称)!.push({
+          专业名称: record.专业名称,
+          普通计划数: record.普通计划数,
+          专项计划数: record.专项计划数,
+        });
       }
+
+      const schoolList = Array.from(schoolGroupMap.entries())
+        .map(([school, plans]) => ({
+          学校名称: school,
+          招生计划: plans,
+          计划总数: plans.reduce((sum, p) => sum + p.普通计划数 + p.专项计划数, 0),
+        }))
+        .sort((a, b) => b.计划总数 - a.计划总数);
+
+      // 获取本科专业信息
+      const majorInfo = directoryRecords.find(r => r.本科专业 === undergraduateMajor);
 
       return NextResponse.json({
         success: true,
         data: {
-          level: "major",
-          schoolName,
-          专业列表: results,
+          level: "school",
+          专科专业: majorInfo?.专科专业 || directoryRecords[0].专科专业,
+          本科专业: undergraduateMajor,
+          本科专业类: majorInfo?.本科专业类 || "",
+          招考类别: majorInfo?.招考类别 || "",
+          学校列表: schoolList,
         },
       });
     }
 
-    // 3. 如果没有指定学校，返回学校列表（去重）和考试科目
-    // 获取所有本科专业名称
-    const undergraduateMajors = directoryRecords.map((r) => r.本科专业);
+    // 3. 如果没有指定本科专业，返回本科专业列表（去重）和考试科目
+    // 按本科专业分组
+    const majorGroupMap = new Map<string, {
+      本科专业类: string;
+      招考类别: string;
+      可报考学校数: number;
+    }>();
 
-    const schoolSet = new Map<string, { 专业数量: number; 招考类别: Set<string> }>();
-
-    for (const major of undergraduateMajors) {
-      const enrollmentRecords = await db
-        .select()
-        .from(enrollmentPlan)
-        .where(like(enrollmentPlan.专业名称, `%${major}%`));
-
-      for (const record of enrollmentRecords) {
-        if (!schoolSet.has(record.院校名称)) {
-          schoolSet.set(record.院校名称, {
-            专业数量: 0,
-            招考类别: new Set(),
-          });
-        }
-        schoolSet.get(record.院校名称)!.专业数量 += 1;
-      }
-    }
-
-    // 收集所有招考类别（去重）
     const categorySet = new Set<string>();
+
     for (const record of directoryRecords) {
+      if (!majorGroupMap.has(record.本科专业)) {
+        // 查询该本科专业有多少学校招生
+        const enrollmentRecords = await db
+          .select()
+          .from(enrollmentPlan)
+          .where(like(enrollmentPlan.专业名称, `%${record.本科专业}%`));
+
+        const schoolCount = new Set(enrollmentRecords.map(e => e.院校名称)).size;
+
+        majorGroupMap.set(record.本科专业, {
+          本科专业类: record.本科专业类,
+          招考类别: record.招考类别,
+          可报考学校数: schoolCount,
+        });
+      }
       categorySet.add(record.招考类别);
     }
 
@@ -140,20 +147,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const schoolList = Array.from(schoolSet.entries())
-      .map(([school, info]) => ({
-        学校名称: school,
-        可报考专业数: info.专业数量,
+    const majorList = Array.from(majorGroupMap.entries())
+      .map(([major, info]) => ({
+        本科专业: major,
+        本科专业类: info.本科专业类,
+        招考类别: info.招考类别,
+        可报考学校数: info.可报考学校数,
       }))
-      .sort((a, b) => b.可报考专业数 - a.可报考专业数);
+      .sort((a, b) => b.可报考学校数 - a.可报考学校数);
 
     return NextResponse.json({
       success: true,
       data: {
-        level: "school",
+        level: "major",
         专科专业: directoryRecords[0].专科专业,
         考试科目列表: examSubjectsList,
-        学校列表: schoolList,
+        本科专业列表: majorList,
       },
     });
   } catch (error) {
